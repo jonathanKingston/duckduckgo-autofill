@@ -32,9 +32,13 @@ class DataAutofill extends Tooltip {
             return shouldShow
         }
 
+        // TODO
+        const isDesktop = true
+        const desktopClass = isDesktop ? 'desktop' : ''
+
         this.shadow.innerHTML = `
 ${includeStyles}
-<div class="wrapper wrapper--data">
+<div class="wrapper wrapper--data ${desktopClass}">
     <div class="tooltip tooltip--data" hidden>
         ${this.data.map((singleData) => `
             ${shouldShowSeparator(singleData.id) ? '<hr />' : ''}

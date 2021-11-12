@@ -5,9 +5,29 @@ const {SUBMIT_BUTTON_SELECTOR, FORM_ELS_SELECTOR} = require('./Form/selectors')
 /** @type Map<HTMLFormElement, Form> */
 const forms = new Map()
 
+/* TODO check if we need this / should combine with getParentFormElement for a faster lookup
+const getParentFormInstance = (input, parentFormElement) => {
+    // Note that el.contains returns true for el itself
+    return [...forms.keys()].find((form) => form.contains(parentFormElement))
+}
+*/
+
+const getParentFormInstance = (parentFormElement) => {
+    return forms.get(parentFormElement)
+}
+
+const getOrCreateParentFormInstance = (input, parentFormElement, DeviceInterface) => {
+    let parentFormInstance = getParentFormInstance(input, parentFormElement)
+    if (!parentFormInstance) {
+        parentFormInstance = new Form(parentFormElement, input, DeviceInterface)
+        forms.set(parentFormElement, parentFormInstance)
+    }
+    return parentFormInstance
+}
+
 // Accepts the DeviceInterface as an explicit dependency
 const scanForInputs = (DeviceInterface) => {
-    const getParentForm = (input) => {
+    const getParentFormElement = (input) => {
         if (input.form) return input.form
 
         let element = input
@@ -22,12 +42,10 @@ const scanForInputs = (DeviceInterface) => {
                 return element
             }
         }
-
-        return input
     }
 
     const addInput = (input) => {
-        const parentForm = getParentForm(input)
+        const parentForm = getParentFormElement(input)
 
         // Note that el.contains returns true for el itself
         const previouslyFoundParent = [...forms.keys()].find((form) => form.contains(parentForm))
@@ -90,4 +108,4 @@ const scanForInputs = (DeviceInterface) => {
     })
 }
 
-module.exports = {scanForInputs, forms}
+module.exports = {scanForInputs, forms, getOrCreateParentFormInstance}

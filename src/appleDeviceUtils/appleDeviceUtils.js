@@ -13,8 +13,10 @@ const ddgGlobals = require('./captureDdgGlobals')
  * @param {*} data
  * @returns {*}
  */
-const wkSend = (handler, data = {}) =>
-    window.webkit.messageHandlers[handler].postMessage({...data, messageHandling: {...data.messageHandling, secret}})
+const wkSend = (handler, data = {}) => {
+    console.log('wkSend', handler, data)
+    return window.webkit.messageHandlers[handler].postMessage({...data, messageHandling: {...data.messageHandling, secret}})
+}
 
 /**
  * Generate a random method name and adds it to the global scope
@@ -44,6 +46,7 @@ const generateRandomMethod = (randomMethodName, callback) => {
 const wkSendAndWait = async (handler, data = {}) => {
     if (hasModernWebkitAPI) {
         const response = await wkSend(handler, data)
+        console.log('got response', {response, handler, data})
         return ddgGlobals.JSONparse(response || '{}')
     }
 

@@ -1,6 +1,5 @@
 const {forms} = require('../scanForInputs')
 const isApp = require('../autofill-utils')
-
 const listenForGlobalFormSubmission = () => {
     if (!isApp) return
 

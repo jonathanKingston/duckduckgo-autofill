@@ -1,19 +1,70 @@
 const EmailAutofill = require('./UI/EmailAutofill')
 const DataAutofill = require('./UI/DataAutofill')
 const {
-    isApp, notifyWebApp, isDDGApp, isAndroid,
-    isDDGDomain, sendAndWaitForAnswer, setValue,
-    formatDuckAddress, isMobileApp, ADDRESS_DOMAIN
+    isApp,
+    isTopFrame,
+    notifyWebApp,
+    isDDGApp,
+    isAndroid,
+    isDDGDomain,
+    sendAndWaitForAnswer,
+    setValue,
+    formatDuckAddress,
+    isMobileApp,
+    getDaxBoundingBox,
+    ADDRESS_DOMAIN
 } = require('./autofill-utils')
 const {wkSend, wkSendAndWait} = require('./appleDeviceUtils/appleDeviceUtils')
 const {scanForInputs, forms} = require('./scanForInputs.js')
 const {formatFullName} = require('./Form/formatters')
+const getInputConfig = require('./Form/inputTypeConfig')
 
 const SIGN_IN_MSG = { signMeIn: true }
 
-const attachTooltip = function (form, input) {
-    form.activeInput = input
+let currentAttached = {}
+const attachTooltip = function (form, input, e) {
+    if (!isTopFrame) {
+        let dimensions = getDaxBoundingBox(input)
+        const inputClientDimensions = input.getBoundingClientRect()
+        console.log(dimensions, e, input, inputClientDimensions)
+        // TODO check screenX/Y is correct over clientX, layerX, etc
+        let diffX = Math.floor(e.x - dimensions.x)
+        let diffY = Math.floor(e.y - dimensions.y)
+        const inputLeft = Math.floor(/* e.x - */inputClientDimensions.x/* - window.scrollX */)
+        const inputTop = Math.floor(/* e.y - */inputClientDimensions.y/* - window.scrollY */)
 
+        /*
+        const red = document.createElement("div");
+        //const calcTop = e.pageY + inputTop;
+        const calcTop = inputTop;
+        //const calcLeft = e.pageX - inputLeft;
+        const calcLeft = inputLeft;
+        red.style = `
+            background:red;
+            display: block;
+            height: ${inputClientDimensions.height}px;
+            width: ${inputClientDimensions.width}px;
+            position: absolute;
+            top: ${calcTop}px;
+            left: ${calcLeft}px;
+        `
+        document.body.appendChild(red)
+        */
+
+        DeviceInterface.showTooltip({
+            top: String(diffY),
+            left: String(diffX),
+            height: String(dimensions.height),
+            width: String(dimensions.width),
+            inputHeight: String(Math.floor(inputClientDimensions.height)),
+            inputWidth: String(Math.floor(inputClientDimensions.width)),
+            inputTop: String(inputTop),
+            inputLeft: String(inputLeft)
+        })
+        currentAttached = {form, input}
+    }
+    form.activeInput = input
+    // TODO get working again
     if (isMobileApp) {
         this.getAlias().then((alias) => {
             if (alias) form.autofillEmail(alias)
@@ -30,6 +81,11 @@ const attachTooltip = function (form, input) {
         window.addEventListener('input', form.removeTooltip, {once: true})
     }
 }
+
+document.addEventListener('InboundCredential', function (e) {
+    console.log('inbound', e)
+    currentAttached.form.autofillEmail(e.detail.credential)
+})
 
 let attempts = 0
 
@@ -137,6 +193,8 @@ class InterfacePrototype {
         const start = () => {
             this.addDeviceListeners()
             this.setupAutofill()
+            const event = new CustomEvent('InitComplete', {})
+            window.dispatchEvent(event)
         }
         if (document.readyState === 'complete') {
             start()
@@ -144,6 +202,10 @@ class InterfacePrototype {
             window.addEventListener('load', start)
         }
     }
+    getActiveForm () {
+        return [...forms.values()].find((form) => form.tooltip)
+    }
+    setActiveForm () {}
     setupAutofill () {}
     getAddresses () {}
     refreshAlias () {}
@@ -295,13 +357,13 @@ class AppleDeviceInterface extends InterfacePrototype {
                 notifyWebApp({isApp})
             }
 
-            if (isApp) {
+            if (isApp && !isTopFrame) {
                 await this.getAutofillInitData()
             }
 
             const signedIn = await this._checkDeviceSignedIn()
             if (signedIn) {
-                if (isApp) {
+                if (isApp && !isTopFrame) {
                     await this.getAddresses()
                 }
                 notifyWebApp({ deviceSignedIn: {value: true, shouldLog} })
@@ -311,6 +373,33 @@ class AppleDeviceInterface extends InterfacePrototype {
             }
 
             scanForInputs(this)
+        }
+
+        this.getActiveForm = () => {
+            if (currentAttached.form) return currentAttached.form
+            return [...forms.values()].find((form) => form.tooltip)
+        }
+        // TODO
+        this.setActiveForm = (input, form) => {
+            currentAttached.form = form
+            currentAttached.input = input
+            form.activeInput = input
+            console.log('got here, the following needs to load at the right moment')
+            const inputType = getInputConfig(input).type
+            form.tooltip = inputType === 'emailNew'
+                ? new EmailAutofill(input, form, this)
+                : new DataAutofill(input, form, this)
+            form.intObs.observe(input)
+            window.addEventListener('pointerdown', form.removeTooltip, {capture: true})
+            window.addEventListener('input', form.removeTooltip, {once: true})
+        }
+
+        this.showTooltip = async (details) => {
+            await wkSend('showAutofillParent', details)
+        }
+
+        this.closeTooltip = async () => {
+            await wkSend('closeAutofillParent', {})
         }
 
         this.getAddresses = async () => {
@@ -362,12 +451,13 @@ class AppleDeviceInterface extends InterfacePrototype {
          * Gets the init data from the device
          * @returns {APIResponse<PMData>}
          */
-        this.getAutofillInitData = () =>
-            wkSendAndWait('pmHandlerGetAutofillInitData')
+        this.getAutofillInitData = () => {
+            return wkSendAndWait('pmHandlerGetAutofillInitData')
                 .then((response) => {
                     this.storeLocalData(response.success)
                     return response
                 })
+        }
 
         /**
          * Gets credentials ready for autofill
@@ -409,6 +499,27 @@ class AppleDeviceInterface extends InterfacePrototype {
          */
         this.getAutofillCreditCard = (id) =>
             wkSendAndWait('pmHandlerGetCreditCard', { id })
+    }
+    #dataApple = {
+        credentials: false,
+        creditCards: false,
+        identities: false
+    }
+
+    storeLocalData (data) {
+        if (isTopFrame) {
+            return DeviceInterface.storeLocalData.apply(this, arguments)
+        }
+        this.#dataApple = data
+    }
+    get hasLocalCredentials () {
+        return this.#dataApple.credentials
+    }
+    get hasLocalIdentities () {
+        return this.#dataApple.identities
+    }
+    get hasLocalCreditCards () {
+        return this.#dataApple.creditCards
     }
 }
 
