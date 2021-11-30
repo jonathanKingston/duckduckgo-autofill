@@ -1,4 +1,4 @@
-const {safeExecute, addInlineStyles, getDaxBoundingBox} = require('../autofill-utils')
+const {safeExecute, addInlineStyles, getDaxBoundingBox, isTopFrame} = require('../autofill-utils')
 const {getInputMainType} = require('../Form/input-classifiers')
 
 const updatePosition = function ({left, top}) {
@@ -20,7 +20,10 @@ const updatePosition = function ({left, top}) {
         this.transformRuleIndex = shadow.styleSheets[0].rules.length
     }
 
-    const newRule = `.wrapper {transform: translate(${left}px, ${top}px);}`
+    let newRule = `.wrapper {transform: translate(${left}px, ${top}px);}`
+    if (isTopFrame) {
+        newRule = '.wrapper {transform: none; }'
+    }
     shadow.styleSheets[0].insertRule(newRule, this.transformRuleIndex)
 }
 

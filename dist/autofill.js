@@ -59,6 +59,7 @@ const attachTooltip = function (form, input, e) {
 
     let diffX = Math.floor(e.x - dimensions.x);
     let diffY = Math.floor(e.y - dimensions.y);
+<<<<<<< HEAD
     const inputLeft = Math.floor(
     /* e.x - */
     inputClientDimensions.x
@@ -69,6 +70,10 @@ const attachTooltip = function (form, input, e) {
     inputClientDimensions.y
     /* - window.scrollY */
     );
+=======
+    const inputLeft = Math.floor(inputClientDimensions.x);
+    const inputTop = Math.floor(inputClientDimensions.y);
+>>>>>>> 6665ba4 (Clean up message passing and form visibility)
     /*
     const red = document.createElement("div");
     //const calcTop = e.pageY + inputTop;
@@ -88,14 +93,14 @@ const attachTooltip = function (form, input, e) {
     */
 
     DeviceInterface.showTooltip({
-      top: String(diffY),
-      left: String(diffX),
-      height: String(dimensions.height),
-      width: String(dimensions.width),
-      inputHeight: String(Math.floor(inputClientDimensions.height)),
-      inputWidth: String(Math.floor(inputClientDimensions.width)),
-      inputTop: String(inputTop),
-      inputLeft: String(inputLeft)
+      top: diffY,
+      left: diffX,
+      height: dimensions.height,
+      width: dimensions.width,
+      inputHeight: Math.floor(inputClientDimensions.height),
+      inputWidth: Math.floor(inputClientDimensions.width),
+      inputTop: inputTop,
+      inputLeft: inputLeft
     });
     currentAttached = {
       form,
@@ -2458,7 +2463,8 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 const {
   safeExecute,
   addInlineStyles,
-  getDaxBoundingBox
+  getDaxBoundingBox,
+  isTopFrame
 } = require('../autofill-utils');
 
 const {
@@ -2487,7 +2493,12 @@ const updatePosition = function ({
     this.transformRuleIndex = shadow.styleSheets[0].rules.length;
   }
 
-  const newRule = ".wrapper {transform: translate(".concat(left, "px, ").concat(top, "px);}");
+  let newRule = ".wrapper {transform: translate(".concat(left, "px, ").concat(top, "px);}");
+
+  if (isTopFrame) {
+    newRule = '.wrapper {transform: none; }';
+  }
+
   shadow.styleSheets[0].insertRule(newRule, this.transformRuleIndex);
 };
 

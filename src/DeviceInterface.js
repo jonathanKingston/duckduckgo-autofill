@@ -30,8 +30,8 @@ const attachTooltip = function (form, input, e) {
         // TODO check screenX/Y is correct over clientX, layerX, etc
         let diffX = Math.floor(e.x - dimensions.x)
         let diffY = Math.floor(e.y - dimensions.y)
-        const inputLeft = Math.floor(/* e.x - */inputClientDimensions.x/* - window.scrollX */)
-        const inputTop = Math.floor(/* e.y - */inputClientDimensions.y/* - window.scrollY */)
+        const inputLeft = Math.floor(inputClientDimensions.x)
+        const inputTop = Math.floor(inputClientDimensions.y)
 
         /*
         const red = document.createElement("div");
@@ -52,14 +52,14 @@ const attachTooltip = function (form, input, e) {
         */
 
         DeviceInterface.showTooltip({
-            top: String(diffY),
-            left: String(diffX),
-            height: String(dimensions.height),
-            width: String(dimensions.width),
-            inputHeight: String(Math.floor(inputClientDimensions.height)),
-            inputWidth: String(Math.floor(inputClientDimensions.width)),
-            inputTop: String(inputTop),
-            inputLeft: String(inputLeft)
+            top: diffY,
+            left: diffX,
+            height: dimensions.height,
+            width: dimensions.width,
+            inputHeight: Math.floor(inputClientDimensions.height),
+            inputWidth: Math.floor(inputClientDimensions.width),
+            inputTop: inputTop,
+            inputLeft: inputLeft
         })
         currentAttached = {form, input}
     }

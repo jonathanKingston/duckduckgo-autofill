@@ -6,6 +6,7 @@ function setupFakeForm () {
     fakeInput.name = 'email'
     fakeInput.autocomplete = 'email'
     let fakeForm = document.createElement('form')
+    fakeForm.style.visibility = 'collapse'
     fakeForm.appendChild(fakeInput)
     main.appendChild(fakeForm)
     return {fakeInput, fakeForm}
