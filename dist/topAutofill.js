@@ -52,6 +52,8 @@ const SIGN_IN_MSG = {
 let currentAttached = {};
 
 const attachTooltip = function (form, input, e) {
+  const inputType = getInputConfig(input).type;
+
   if (!isTopFrame) {
     let dimensions = getDaxBoundingBox(input);
     const inputClientDimensions = input.getBoundingClientRect();
@@ -59,21 +61,8 @@ const attachTooltip = function (form, input, e) {
 
     let diffX = Math.floor(e.x - dimensions.x);
     let diffY = Math.floor(e.y - dimensions.y);
-<<<<<<< HEAD
-    const inputLeft = Math.floor(
-    /* e.x - */
-    inputClientDimensions.x
-    /* - window.scrollX */
-    );
-    const inputTop = Math.floor(
-    /* e.y - */
-    inputClientDimensions.y
-    /* - window.scrollY */
-    );
-=======
     const inputLeft = Math.floor(inputClientDimensions.x);
     const inputTop = Math.floor(inputClientDimensions.y);
->>>>>>> 6665ba4 (Clean up message passing and form visibility)
     /*
     const red = document.createElement("div");
     //const calcTop = e.pageY + inputTop;
@@ -100,7 +89,8 @@ const attachTooltip = function (form, input, e) {
       inputHeight: Math.floor(inputClientDimensions.height),
       inputWidth: Math.floor(inputClientDimensions.width),
       inputTop: inputTop,
-      inputLeft: inputLeft
+      inputLeft: inputLeft,
+      inputType: inputType
     });
     currentAttached = {
       form,
@@ -116,7 +106,8 @@ const attachTooltip = function (form, input, e) {
     });
   } else {
     if (form.tooltip) return;
-    form.tooltip = !isApp ? new EmailAutofill(input, form, this) : new DataAutofill(input, form, this);
+    form.activeInput = input;
+    form.tooltip = inputType === 'emailNew' ? new EmailAutofill(input, form, this) : new DataAutofill(input, form, this);
     form.intObs.observe(input);
     window.addEventListener('pointerdown', form.removeTooltip, {
       capture: true
@@ -680,6 +671,13 @@ class AppleDeviceInterface extends InterfacePrototype {
 
   get hasLocalCreditCards() {
     return _classPrivateFieldGet(this, _dataApple).creditCards;
+  }
+
+  async getInputType() {
+    const {
+      inputType
+    } = await wkSendAndWait('emailHandlerCheckAppSignedInStatus');
+    return inputType;
   }
 
 }
@@ -3350,13 +3348,20 @@ module.exports = {
 },{"./Form/Form":2,"./Form/selectors":10,"./autofill-utils":18}],23:[function(require,module,exports){
 "use strict";
 
-function setupFakeForm() {
+function setupFakeForm(inputType) {
   let main = document.querySelector('main'); // TODO hey we're a PoC let's just fake the code to get it working
 
   let fakeInput = document.createElement('input');
-  fakeInput.type = 'email';
-  fakeInput.name = 'email';
-  fakeInput.autocomplete = 'email';
+  let outputType = 'email';
+  console.log('it', inputType);
+
+  if (inputType === 'credentials') {
+    outputType = 'username';
+  }
+
+  fakeInput.type = outputType;
+  fakeInput.name = outputType;
+  fakeInput.autocomplete = outputType;
   let fakeForm = document.createElement('form');
   fakeForm.style.visibility = 'collapse';
   fakeForm.appendChild(fakeInput);
@@ -3367,14 +3372,14 @@ function setupFakeForm() {
   };
 }
 
-function init() {
+async function init() {
+  const DeviceInterface = require('./DeviceInterface');
+
+  const inputType = await DeviceInterface.getInputType();
   const {
     fakeInput,
     fakeForm
-  } = setupFakeForm();
-
-  const DeviceInterface = require('./DeviceInterface'); // TODO
-
+  } = setupFakeForm(inputType); // TODO
 
   function triggerFormSetup() {
     const {
@@ -3387,12 +3392,6 @@ function init() {
   }
 
   window.addEventListener('InitComplete', triggerFormSetup); // const EmailAutofill = require('./UI/EmailAutofill')
-
-  /*
-  const {
-      wkSend
-  } = require('./appleDeviceUtils/appleDeviceUtils')
-  */
   // const DataAutofill = require('./UI/DataAutofill')
 
   require('./init'); // let af = new EmailAutofill(fakeInput, fakeForm, DeviceInterface)

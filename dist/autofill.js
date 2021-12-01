@@ -52,6 +52,8 @@ const SIGN_IN_MSG = {
 let currentAttached = {};
 
 const attachTooltip = function (form, input, e) {
+  const inputType = getInputConfig(input).type;
+
   if (!isTopFrame) {
     let dimensions = getDaxBoundingBox(input);
     const inputClientDimensions = input.getBoundingClientRect();
@@ -59,21 +61,8 @@ const attachTooltip = function (form, input, e) {
 
     let diffX = Math.floor(e.x - dimensions.x);
     let diffY = Math.floor(e.y - dimensions.y);
-<<<<<<< HEAD
-    const inputLeft = Math.floor(
-    /* e.x - */
-    inputClientDimensions.x
-    /* - window.scrollX */
-    );
-    const inputTop = Math.floor(
-    /* e.y - */
-    inputClientDimensions.y
-    /* - window.scrollY */
-    );
-=======
     const inputLeft = Math.floor(inputClientDimensions.x);
     const inputTop = Math.floor(inputClientDimensions.y);
->>>>>>> 6665ba4 (Clean up message passing and form visibility)
     /*
     const red = document.createElement("div");
     //const calcTop = e.pageY + inputTop;
@@ -100,7 +89,8 @@ const attachTooltip = function (form, input, e) {
       inputHeight: Math.floor(inputClientDimensions.height),
       inputWidth: Math.floor(inputClientDimensions.width),
       inputTop: inputTop,
-      inputLeft: inputLeft
+      inputLeft: inputLeft,
+      inputType: inputType
     });
     currentAttached = {
       form,
@@ -116,7 +106,8 @@ const attachTooltip = function (form, input, e) {
     });
   } else {
     if (form.tooltip) return;
-    form.tooltip = !isApp ? new EmailAutofill(input, form, this) : new DataAutofill(input, form, this);
+    form.activeInput = input;
+    form.tooltip = inputType === 'emailNew' ? new EmailAutofill(input, form, this) : new DataAutofill(input, form, this);
     form.intObs.observe(input);
     window.addEventListener('pointerdown', form.removeTooltip, {
       capture: true
@@ -680,6 +671,13 @@ class AppleDeviceInterface extends InterfacePrototype {
 
   get hasLocalCreditCards() {
     return _classPrivateFieldGet(this, _dataApple).creditCards;
+  }
+
+  async getInputType() {
+    const {
+      inputType
+    } = await wkSendAndWait('emailHandlerCheckAppSignedInStatus');
+    return inputType;
   }
 
 }

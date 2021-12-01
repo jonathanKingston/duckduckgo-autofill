@@ -23,6 +23,7 @@ const SIGN_IN_MSG = { signMeIn: true }
 
 let currentAttached = {}
 const attachTooltip = function (form, input, e) {
+    const inputType = getInputConfig(input).type
     if (!isTopFrame) {
         let dimensions = getDaxBoundingBox(input)
         const inputClientDimensions = input.getBoundingClientRect()
@@ -59,7 +60,8 @@ const attachTooltip = function (form, input, e) {
             inputHeight: Math.floor(inputClientDimensions.height),
             inputWidth: Math.floor(inputClientDimensions.width),
             inputTop: inputTop,
-            inputLeft: inputLeft
+            inputLeft: inputLeft,
+            inputType: inputType
         })
         currentAttached = {form, input}
     }
@@ -73,7 +75,8 @@ const attachTooltip = function (form, input, e) {
     } else {
         if (form.tooltip) return
 
-        form.tooltip = !isApp
+        form.activeInput = input
+        form.tooltip = inputType === 'emailNew'
             ? new EmailAutofill(input, form, this)
             : new DataAutofill(input, form, this)
         form.intObs.observe(input)
@@ -520,6 +523,10 @@ class AppleDeviceInterface extends InterfacePrototype {
     }
     get hasLocalCreditCards () {
         return this.#dataApple.creditCards
+    }
+    async getInputType () {
+        const {inputType} = await wkSendAndWait('emailHandlerCheckAppSignedInStatus')
+        return inputType
     }
 }
 

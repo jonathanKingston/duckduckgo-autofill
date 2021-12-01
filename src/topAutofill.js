@@ -1,10 +1,15 @@
-function setupFakeForm () {
+function setupFakeForm (inputType) {
     let main = document.querySelector('main')
     // TODO hey we're a PoC let's just fake the code to get it working
     let fakeInput = document.createElement('input')
-    fakeInput.type = 'email'
-    fakeInput.name = 'email'
-    fakeInput.autocomplete = 'email'
+    let outputType = 'email'
+    console.log('it', inputType)
+    if (inputType === 'credentials') {
+        outputType = 'username'
+    }
+    fakeInput.type = outputType
+    fakeInput.name = outputType
+    fakeInput.autocomplete = outputType
     let fakeForm = document.createElement('form')
     fakeForm.style.visibility = 'collapse'
     fakeForm.appendChild(fakeInput)
@@ -12,9 +17,10 @@ function setupFakeForm () {
     return {fakeInput, fakeForm}
 }
 
-function init () {
-    const {fakeInput, fakeForm} = setupFakeForm()
+async function init () {
     const DeviceInterface = require('./DeviceInterface')
+    const inputType = await DeviceInterface.getInputType()
+    const {fakeInput, fakeForm} = setupFakeForm(inputType)
     // TODO
     function triggerFormSetup () {
         const {getOrCreateParentFormInstance} = require('./scanForInputs')
@@ -24,11 +30,6 @@ function init () {
     }
     window.addEventListener('InitComplete', triggerFormSetup)
     // const EmailAutofill = require('./UI/EmailAutofill')
-    /*
-    const {
-        wkSend
-    } = require('./appleDeviceUtils/appleDeviceUtils')
-*/
     // const DataAutofill = require('./UI/DataAutofill')
 
     require('./init')
