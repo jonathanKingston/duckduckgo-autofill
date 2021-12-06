@@ -3348,23 +3348,34 @@ module.exports = {
 },{"./Form/Form":2,"./Form/selectors":10,"./autofill-utils":18}],23:[function(require,module,exports){
 "use strict";
 
+function makeField(outputType) {
+  let field = document.createElement('input');
+  field.type = outputType;
+  field.name = outputType;
+  field.autocomplete = outputType;
+  return field;
+}
+
 function setupFakeForm(inputType) {
   let main = document.querySelector('main'); // TODO hey we're a PoC let's just fake the code to get it working
 
-  let fakeInput = document.createElement('input');
-  let outputType = 'email';
-  console.log('it', inputType);
+  let fakeForm = document.createElement('form');
+  let fakeInput = makeField('email');
 
   if (inputType === 'credentials') {
-    outputType = 'username';
+    fakeInput = makeField('username');
+    fakeForm.appendChild(fakeInput);
+    const fakePassword = makeField('password');
+    fakePassword.autocomplete = 'current-password';
+    fakeForm.appendChild(fakePassword);
+    let fakeButton = document.createElement('button');
+    fakeButton.textContent = 'Log in';
+    fakeForm.appendChild(fakeButton);
+  } else {
+    fakeForm.appendChild(fakeInput);
   }
 
-  fakeInput.type = outputType;
-  fakeInput.name = outputType;
-  fakeInput.autocomplete = outputType;
-  let fakeForm = document.createElement('form');
   fakeForm.style.visibility = 'collapse';
-  fakeForm.appendChild(fakeInput);
   main.appendChild(fakeForm);
   return {
     fakeInput,
@@ -3391,26 +3402,11 @@ async function init() {
     DeviceInterface.setActiveForm(fakeInput, parentFormInstance);
   }
 
-  window.addEventListener('InitComplete', triggerFormSetup); // const EmailAutofill = require('./UI/EmailAutofill')
-  // const DataAutofill = require('./UI/DataAutofill')
+  window.addEventListener('InitComplete', triggerFormSetup);
 
-  require('./init'); // let af = new EmailAutofill(fakeInput, fakeForm, DeviceInterface)
-  // console.log(af)
-
-  /*
-  fakeForm.style.visibility = "hidden" // TODO have a way to handle no input element instead
-  fakeForm.style.display = "none"
-   */
-
+  require('./init');
 
   setTimeout(triggerFormSetup, 4000);
-  /*
-      let button = document.querySelector('button')
-      button.addEventListener('click', () => {
-          // eslint-disable-next-line no-undef
-          wkSend('selectedDetail', { credential: 'jkt@duck.com' })
-      })
-   */
 }
 
 window.addEventListener('load', init);
