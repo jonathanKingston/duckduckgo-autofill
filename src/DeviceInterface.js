@@ -328,30 +328,6 @@ class ExtensionInterface extends InterfacePrototype {
     }
 }
 
-const duckduckgoDebugMessaging = (function () {
-    let log = () => {}
-    let signpostEvent = () => {}
-
-    if (true) {
-        signpostEvent = function signpostEvent (data) {
-            try {
-                webkit.messageHandlers.signpostMessage.postMessage(data)
-            } catch (error) {}
-        }
-
-        log = function log () {
-            try {
-                webkit.messageHandlers.log.postMessage(JSON.stringify(arguments))
-            } catch (error) {}
-        }
-    }
-
-    return {
-        signpostEvent,
-        log
-    }
-}())
-
 class AndroidInterface extends InterfacePrototype {
     constructor () {
         super()
@@ -384,14 +360,12 @@ class AndroidInterface extends InterfacePrototype {
 
 class AppleDeviceInterface extends InterfacePrototype {
     constructor () {
-        duckduckgoDebugMessaging.log('interface init')
         super()
         if (isTopFrame) {
             this.stripCredentials = false
         }
 
         this.setupAutofill = async ({shouldLog} = {shouldLog: false}) => {
-            duckduckgoDebugMessaging.log('setup autofill')
             if (isDDGDomain()) {
                 // Tell the web app whether we're in the app
                 notifyWebApp({isApp})
@@ -492,10 +466,8 @@ class AppleDeviceInterface extends InterfacePrototype {
          * @returns {APIResponse<PMData>}
          */
         this.getAutofillInitData = () => {
-            // duckduckgoDebugMessaging.log("got here a")
             return wkSendAndWait('pmHandlerGetAutofillInitData')
                 .then((response) => {
-                    // duckduckgoDebugMessaging.log("got here")
                     this.storeLocalData(response.success)
                     return response
                 })
