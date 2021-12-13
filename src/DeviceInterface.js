@@ -64,6 +64,7 @@ const attachTooltip = function (form, input, e) {
             inputType: inputType
         })
         currentAttached = {form, input}
+        return
     }
     form.activeInput = input
     // TODO get working again
@@ -74,7 +75,6 @@ const attachTooltip = function (form, input, e) {
         })
     } else {
         if (form.tooltip) return
-
         form.activeInput = input
         form.tooltip = inputType === 'emailNew'
             ? new EmailAutofill(input, form, this)
@@ -85,9 +85,13 @@ const attachTooltip = function (form, input, e) {
     }
 }
 
+// TODO move somewhere apple specific
 document.addEventListener('InboundCredential', function (e) {
-    console.log('inbound', e)
-    currentAttached.form.autofillEmail(e.detail.credential)
+    if ('email' in e.detail.data) {
+        currentAttached.form.autofillEmail(e.detail.data.email)
+    } else {
+        currentAttached.form.autofillData(e.detail.data, e.detail.configType)
+    }
 })
 
 let attempts = 0
@@ -156,13 +160,17 @@ class InterfacePrototype {
         return [...identities, ...newIdentities]
     }
 
+    stripCredentials = false
+
     /**
      * Stores init data coming from the device
      * @param { PMData } data
      */
     storeLocalData (data) {
-        data.credentials.forEach((cred) => delete cred.password)
-        data.creditCards.forEach((cc) => delete cc.cardNumber && delete cc.cardSecurityCode)
+        if (this.stripCredentials) {
+            data.credentials.forEach((cred) => delete cred.password)
+            data.creditCards.forEach((cc) => delete cc.cardNumber && delete cc.cardSecurityCode)
+        }
         // Store the full name as a separate field to simplify autocomplete
         const updatedIdentities = data.identities.map((identity) => ({
             ...identity,
@@ -320,6 +328,30 @@ class ExtensionInterface extends InterfacePrototype {
     }
 }
 
+const duckduckgoDebugMessaging = (function () {
+    let log = () => {}
+    let signpostEvent = () => {}
+
+    if (true) {
+        signpostEvent = function signpostEvent (data) {
+            try {
+                webkit.messageHandlers.signpostMessage.postMessage(data)
+            } catch (error) {}
+        }
+
+        log = function log () {
+            try {
+                webkit.messageHandlers.log.postMessage(JSON.stringify(arguments))
+            } catch (error) {}
+        }
+    }
+
+    return {
+        signpostEvent,
+        log
+    }
+}())
+
 class AndroidInterface extends InterfacePrototype {
     constructor () {
         super()
@@ -352,21 +384,26 @@ class AndroidInterface extends InterfacePrototype {
 
 class AppleDeviceInterface extends InterfacePrototype {
     constructor () {
+        duckduckgoDebugMessaging.log('interface init')
         super()
+        if (isTopFrame) {
+            this.stripCredentials = false
+        }
 
         this.setupAutofill = async ({shouldLog} = {shouldLog: false}) => {
+            duckduckgoDebugMessaging.log('setup autofill')
             if (isDDGDomain()) {
                 // Tell the web app whether we're in the app
                 notifyWebApp({isApp})
             }
-
-            if (isApp && !isTopFrame) {
+            if (isApp) {
                 await this.getAutofillInitData()
             }
 
+            // TODO is this needed when the field type is email?
             const signedIn = await this._checkDeviceSignedIn()
             if (signedIn) {
-                if (isApp && !isTopFrame) {
+                if (isApp /* && !isTopFrame */) {
                     await this.getAddresses()
                 }
                 notifyWebApp({ deviceSignedIn: {value: true, shouldLog} })
@@ -455,8 +492,10 @@ class AppleDeviceInterface extends InterfacePrototype {
          * @returns {APIResponse<PMData>}
          */
         this.getAutofillInitData = () => {
+            // duckduckgoDebugMessaging.log("got here a")
             return wkSendAndWait('pmHandlerGetAutofillInitData')
                 .then((response) => {
+                    // duckduckgoDebugMessaging.log("got here")
                     this.storeLocalData(response.success)
                     return response
                 })
@@ -503,27 +542,16 @@ class AppleDeviceInterface extends InterfacePrototype {
         this.getAutofillCreditCard = (id) =>
             wkSendAndWait('pmHandlerGetCreditCard', { id })
     }
-    #dataApple = {
-        credentials: false,
-        creditCards: false,
-        identities: false
+
+    // Used to encode data to send back to the child autofill
+    async selectedDetail (detailIn, configType) {
+        let detailsEntries = Object.entries(detailIn).map(([key, value]) => {
+            return [key, String(value)]
+        })
+        const data = Object.fromEntries(detailsEntries)
+        wkSend('selectedDetail', { data, configType })
     }
 
-    storeLocalData (data) {
-        if (isTopFrame) {
-            return DeviceInterface.storeLocalData.apply(this, arguments)
-        }
-        this.#dataApple = data
-    }
-    get hasLocalCredentials () {
-        return this.#dataApple.credentials
-    }
-    get hasLocalIdentities () {
-        return this.#dataApple.identities
-    }
-    get hasLocalCreditCards () {
-        return this.#dataApple.creditCards
-    }
     async getInputType () {
         const {inputType} = await wkSendAndWait('emailHandlerCheckAppSignedInStatus')
         return inputType
