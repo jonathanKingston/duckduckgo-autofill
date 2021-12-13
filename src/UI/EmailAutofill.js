@@ -4,10 +4,10 @@ const {
     escapeXML,
     isTopFrame
 } = require('../autofill-utils')
+const Tooltip = require('./Tooltip')
 const {
     wkSend
 } = require('../appleDeviceUtils/appleDeviceUtils')
-const Tooltip = require('./Tooltip')
 
 class EmailAutofill extends Tooltip {
     constructor (input, associatedForm, Interface) {
@@ -51,27 +51,27 @@ ${includeStyles}
                 this.addressEl.textContent = formatDuckAddress(addresses.personalAddress)
             }
         }
-        function fillForm (address) {
-            const formattedAddress = formatDuckAddress(address)
-            if (isTopFrame) {
-                wkSend('selectedDetail', { credential: formattedAddress })
-            } else {
-                this.associatedForm.autofillEmail(formattedAddress)
-            }
-        }
         this.registerClickableButton(this.usePersonalButton, () => {
-            fillForm(this.addresses.personalAddress)
+            this.fillForm(this.addresses.personalAddress)
         })
         this.registerClickableButton(this.usePrivateButton, () => {
             const email = this.addresses.privateAddress
             this.interface.refreshAlias()
-            fillForm(email)
+            this.fillForm(email)
         })
 
         // Get the alias from the extension
         this.interface.getAddresses().then(this.updateAddresses)
 
         this.init()
+    }
+    fillForm (address) {
+        const formattedAddress = formatAddress(address)
+        if (isTopFrame) {
+            this.interface.selectedDetail({email: formattedAddress}, 'email')
+        } else {
+            this.associatedForm.autofillEmail(formattedAddress)
+        }
     }
 }
 
