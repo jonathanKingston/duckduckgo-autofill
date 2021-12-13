@@ -45,22 +45,13 @@ const scanForInputs = (DeviceInterface) => {
     }
 
     const addInput = (input) => {
-        const parentForm = getParentFormElement(input)
+        const parentFormElement = getParentFormElement(input)
 
-        // Note that el.contains returns true for el itself
-        const previouslyFoundParent = [...forms.keys()].find((form) => form.contains(parentForm))
+        // if this form is an ancestor of an existing form, remove that before adding this
+        const childForm = [...forms.keys()].find((form) => parentFormElement.contains(form))
+        forms.delete(childForm)
 
-        if (previouslyFoundParent) {
-            // If we've already met the form or a descendant, add the input
-            forms.get(previouslyFoundParent).addInput(input)
-        } else {
-            // if this form is an ancestor of an existing form, remove that before adding this
-            const childForm = [...forms.keys()].find((form) => parentForm.contains(form))
-            forms.get(childForm)?.destroy()
-            forms.delete(childForm)
-
-            forms.set(parentForm, new Form(parentForm, input, DeviceInterface))
-        }
+        getOrCreateParentFormInstance(input, parentFormElement, DeviceInterface)
     }
 
     const findEligibleInput = (context) => {

@@ -4,6 +4,7 @@ require('./requestIdleCallback')
 const {forms} = require('./scanForInputs')
 const {isApp} = require('./autofill-utils')
 const DeviceInterface = require('./DeviceInterface')
+
 // Global listener for event delegation
 window.addEventListener('pointerdown', (e) => {
     console.log('PD', e)

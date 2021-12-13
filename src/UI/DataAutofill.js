@@ -67,14 +67,10 @@ ${escapeXML(singleData[config.displaySubtitlePropName] || config.displaySubtitle
         this.autofillButtons.forEach((btn) => {
             this.registerClickableButton(btn, () => {
                 this.interface[`${config.autofillMethod}`](btn.id).then(({success, error}) => {
-<<<<<<< HEAD
                     if (success) {
-                        this.associatedForm.autofillData(success, config.type)
+                        this.fillForm(success, config.type)
                         if (btn.id === 'privateAddress') this.interface.refreshAlias()
                     }
-=======
-                    if (success) this.fillForm(success, config.type)
->>>>>>> 5753a12 (Move UI autofilling into their own functions and call device interface when top)
                 })
             })
         })

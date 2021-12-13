@@ -1,6 +1,8 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _classPrivateFieldSet(receiver, privateMap, value) { var descriptor = _classExtractFieldDescriptor(receiver, privateMap, "set"); _classApplyDescriptorSet(receiver, descriptor, value); return value; }
 
 function _classApplyDescriptorSet(receiver, descriptor, value) { if (descriptor.set) { descriptor.set.call(receiver, value); } else { if (!descriptor.writable) { throw new TypeError("attempted to set read only private field"); } descriptor.value = value; } }
@@ -96,6 +98,7 @@ const attachTooltip = function (form, input, e) {
       form,
       input
     };
+    return;
   }
 
   form.activeInput = input; // TODO get working again
@@ -116,11 +119,15 @@ const attachTooltip = function (form, input, e) {
       once: true
     });
   }
-};
+}; // TODO move somewhere apple specific
+
 
 document.addEventListener('InboundCredential', function (e) {
-  console.log('inbound', e);
-  currentAttached.form.autofillEmail(e.detail.credential);
+  if ('email' in e.detail.data) {
+    currentAttached.form.autofillEmail(e.detail.data.email);
+  } else {
+    currentAttached.form.autofillData(e.detail.data, e.detail.configType);
+  }
 });
 let attempts = 0;
 
@@ -143,6 +150,8 @@ class InterfacePrototype {
         identities: []
       }
     });
+
+    _defineProperty(this, "stripCredentials", false);
   }
 
   get hasLocalAddresses() {
@@ -204,15 +213,17 @@ class InterfacePrototype {
     });
     return [...identities, ...newIdentities];
   }
+
   /**
    * Stores init data coming from the device
    * @param { PMData } data
    */
-
-
   storeLocalData(data) {
-    data.credentials.forEach(cred => delete cred.password);
-    data.creditCards.forEach(cc => delete cc.cardNumber && delete cc.cardSecurityCode); // Store the full name as a separate field to simplify autocomplete
+    if (this.stripCredentials) {
+      data.credentials.forEach(cred => delete cred.password);
+      data.creditCards.forEach(cc => delete cc.cardNumber && delete cc.cardSecurityCode);
+    } // Store the full name as a separate field to simplify autocomplete
+
 
     const updatedIdentities = data.identities.map(identity => ({ ...identity,
       fullName: formatFullName(identity)
@@ -448,20 +459,13 @@ class AndroidInterface extends InterfacePrototype {
 
 }
 
-var _dataApple = new WeakMap();
-
 class AppleDeviceInterface extends InterfacePrototype {
   constructor() {
     super();
 
-    _dataApple.set(this, {
-      writable: true,
-      value: {
-        credentials: false,
-        creditCards: false,
-        identities: false
-      }
-    });
+    if (isTopFrame) {
+      this.stripCredentials = false;
+    }
 
     this.setupAutofill = async ({
       shouldLog
@@ -475,14 +479,15 @@ class AppleDeviceInterface extends InterfacePrototype {
         });
       }
 
-      if (isApp && !isTopFrame) {
+      if (isApp) {
         await this.getAutofillInitData();
-      }
+      } // TODO is this needed when the field type is email?
+
 
       const signedIn = await this._checkDeviceSignedIn();
 
       if (signedIn) {
-        if (isApp && !isTopFrame) {
+        if (isApp) {
           await this.getAddresses();
         }
 
@@ -651,26 +656,18 @@ class AppleDeviceInterface extends InterfacePrototype {
     this.getAutofillCreditCard = id => wkSendAndWait('pmHandlerGetCreditCard', {
       id
     });
-  }
+  } // Used to encode data to send back to the child autofill
 
-  storeLocalData(data) {
-    if (isTopFrame) {
-      return DeviceInterface.storeLocalData.apply(this, arguments);
-    }
 
-    _classPrivateFieldSet(this, _dataApple, data);
-  }
-
-  get hasLocalCredentials() {
-    return _classPrivateFieldGet(this, _dataApple).credentials;
-  }
-
-  get hasLocalIdentities() {
-    return _classPrivateFieldGet(this, _dataApple).identities;
-  }
-
-  get hasLocalCreditCards() {
-    return _classPrivateFieldGet(this, _dataApple).creditCards;
+  async selectedDetail(detailIn, configType) {
+    let detailsEntries = Object.entries(detailIn).map(([key, value]) => {
+      return [key, String(value)];
+    });
+    const data = Object.fromEntries(detailsEntries);
+    wkSend('selectedDetail', {
+      data,
+      configType
+    });
   }
 
   async getInputType() {
@@ -2299,6 +2296,7 @@ module.exports = {
 
 const {
   isApp,
+  isTopFrame,
   escapeXML
 } = require('../autofill-utils');
 
@@ -2345,13 +2343,21 @@ class DataAutofill extends Tooltip {
           error
         }) => {
           if (success) {
-            this.associatedForm.autofillData(success, config.type);
+            this.fillForm(success, config.type);
             if (btn.id === 'privateAddress') this.interface.refreshAlias();
           }
         });
       });
     });
     this.init();
+  }
+
+  fillForm(detail, configType) {
+    if (isTopFrame) {
+      this.interface.selectedDetail(detail, configType);
+    } else {
+      this.associatedForm.autofillData(detail, configType);
+    }
   }
 
 }
@@ -2367,10 +2373,6 @@ const {
   escapeXML,
   isTopFrame
 } = require('../autofill-utils');
-
-const {
-  wkSend
-} = require('../appleDeviceUtils/appleDeviceUtils');
 
 const Tooltip = require('./Tooltip');
 
@@ -2396,36 +2398,36 @@ class EmailAutofill extends Tooltip {
       }
     };
 
-    function fillForm(address) {
-      const formattedAddress = formatDuckAddress(address);
-
-      if (isTopFrame) {
-        wkSend('selectedDetail', {
-          credential: formattedAddress
-        });
-      } else {
-        this.associatedForm.autofillEmail(formattedAddress);
-      }
-    }
-
     this.registerClickableButton(this.usePersonalButton, () => {
-      fillForm(this.addresses.personalAddress);
+      this.fillForm(this.addresses.personalAddress);
     });
     this.registerClickableButton(this.usePrivateButton, () => {
       const email = this.addresses.privateAddress;
       this.interface.refreshAlias();
-      fillForm(email);
+      this.fillForm(email);
     }); // Get the alias from the extension
 
     this.interface.getAddresses().then(this.updateAddresses);
     this.init();
   }
 
+  fillForm(address) {
+    const formattedAddress = formatDuckAddress(address);
+
+    if (isTopFrame) {
+      this.interface.selectedDetail({
+        email: formattedAddress
+      }, 'email');
+    } else {
+      this.associatedForm.autofillEmail(formattedAddress);
+    }
+  }
+
 }
 
 module.exports = EmailAutofill;
 
-},{"../appleDeviceUtils/appleDeviceUtils":16,"../autofill-utils":18,"./Tooltip":13,"./styles/autofill-tooltip-styles.js":15}],13:[function(require,module,exports){
+},{"../autofill-utils":18,"./Tooltip":13,"./styles/autofill-tooltip-styles.js":15}],13:[function(require,module,exports){
 "use strict";
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
@@ -3268,22 +3270,11 @@ const scanForInputs = DeviceInterface => {
   };
 
   const addInput = input => {
-    const parentForm = getParentFormElement(input); // Note that el.contains returns true for el itself
+    const parentFormElement = getParentFormElement(input); // if this form is an ancestor of an existing form, remove that before adding this
 
-    const previouslyFoundParent = [...forms.keys()].find(form => form.contains(parentForm));
-
-    if (previouslyFoundParent) {
-      // If we've already met the form or a descendant, add the input
-      forms.get(previouslyFoundParent).addInput(input);
-    } else {
-      var _forms$get;
-
-      // if this form is an ancestor of an existing form, remove that before adding this
-      const childForm = [...forms.keys()].find(form => parentForm.contains(form));
-      (_forms$get = forms.get(childForm)) === null || _forms$get === void 0 ? void 0 : _forms$get.destroy();
-      forms.delete(childForm);
-      forms.set(parentForm, new Form(parentForm, input, DeviceInterface));
-    }
+    const childForm = [...forms.keys()].find(form => parentFormElement.contains(form));
+    forms.delete(childForm);
+    getOrCreateParentFormInstance(input, parentFormElement, DeviceInterface);
   };
 
   const findEligibleInput = context => {

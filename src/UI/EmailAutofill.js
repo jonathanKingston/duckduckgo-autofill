@@ -5,9 +5,6 @@ const {
     isTopFrame
 } = require('../autofill-utils')
 const Tooltip = require('./Tooltip')
-const {
-    wkSend
-} = require('../appleDeviceUtils/appleDeviceUtils')
 
 class EmailAutofill extends Tooltip {
     constructor (input, associatedForm, Interface) {
@@ -66,7 +63,7 @@ ${includeStyles}
         this.init()
     }
     fillForm (address) {
-        const formattedAddress = formatAddress(address)
+        const formattedAddress = formatDuckAddress(address)
         if (isTopFrame) {
             this.interface.selectedDetail({email: formattedAddress}, 'email')
         } else {
