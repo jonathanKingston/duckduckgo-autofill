@@ -36,17 +36,14 @@ async function init () {
     const DeviceInterface = require('./DeviceInterface')
     const inputType = await DeviceInterface.getInputType()
     const {fakeInput, fakeForm} = setupFakeForm(inputType)
-    // TODO
     function triggerFormSetup () {
         const {getOrCreateParentFormInstance} = require('./scanForInputs')
         const parentFormInstance = getOrCreateParentFormInstance(fakeInput, fakeForm, DeviceInterface)
-        console.log('triggerFormSetup', fakeInput, fakeInput.form, parentFormInstance)
         DeviceInterface.setActiveForm(fakeInput, parentFormInstance)
     }
-    window.addEventListener('InitComplete', triggerFormSetup)
-
+    window.addEventListener('InitComplete', () => {
+        triggerFormSetup()
+    })
     require('./init')
-
-    setTimeout(triggerFormSetup, 4000)
 }
 window.addEventListener('load', init)

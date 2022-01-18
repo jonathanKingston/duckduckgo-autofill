@@ -67,7 +67,8 @@ const ensureIsLastInDOM = function () {
 
 class Tooltip {
     constructor (input, associatedForm, Interface) {
-        this.shadow = document.createElement('ddg-autofill').attachShadow({mode: 'closed'})
+        const mode = isTopFrame ? 'open' : 'closed'
+        this.shadow = document.createElement('ddg-autofill').attachShadow({ mode })
         this.host = this.shadow.host
         this.tooltip = null
         const forcedVisibilityStyles = {

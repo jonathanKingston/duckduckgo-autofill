@@ -201,9 +201,9 @@ class InterfacePrototype {
 
     init () {
         this.attachTooltip = attachTooltip.bind(this)
-        const start = () => {
+        const start = async () => {
             this.addDeviceListeners()
-            this.setupAutofill()
+            await this.setupAutofill()
             const event = new CustomEvent('InitComplete', {})
             window.dispatchEvent(event)
         }
@@ -253,7 +253,7 @@ class ExtensionInterface extends InterfacePrototype {
         this.isDeviceSignedIn = () => this.hasLocalAddresses
 
         this.setupAutofill = ({shouldLog} = {shouldLog: false}) => {
-            this.getAddresses().then(addresses => {
+            return this.getAddresses().then(addresses => {
                 if (this.hasLocalAddresses) {
                     notifyWebApp({ deviceSignedIn: {value: true, shouldLog} })
                     scanForInputs(this)
@@ -398,7 +398,6 @@ class AppleDeviceInterface extends InterfacePrototype {
             currentAttached.form = form
             currentAttached.input = input
             form.activeInput = input
-            console.log('got here, the following needs to load at the right moment')
             const inputType = getInputConfig(input).type
             form.tooltip = inputType === 'emailNew'
                 ? new EmailAutofill(input, form, this)
@@ -406,8 +405,15 @@ class AppleDeviceInterface extends InterfacePrototype {
             form.intObs.observe(input)
             window.addEventListener('pointerdown', form.removeTooltip, {capture: true})
             window.addEventListener('input', form.removeTooltip, {once: true})
+            // TODO calc height correctly
+            const innerNode = document.querySelector('ddg-autofill').shadowRoot.querySelector('.wrapper--data')
+            this.setSize({height: innerNode.clientHeight, width: innerNode.clientWidth})
         }
 
+        this.setSize = async (details) => {
+            await wkSend('setSize', details)
+        }
+        
         this.showTooltip = async (details) => {
             await wkSend('showAutofillParent', details)
         }

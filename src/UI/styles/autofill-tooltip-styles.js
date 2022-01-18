@@ -26,6 +26,11 @@ module.exports = `
     max-width: calc(100vw - 25px);
     z-index: 2147483647;
 }
+.tooltip--data, #topAutofill {
+    background-color: rgba(242, 240, 240, 0.9);
+    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px);
+}
 :not(.desktop) .tooltip--data {
     top: 100%;
     left: 100%;
@@ -33,9 +38,6 @@ module.exports = `
     padding: 4px;
     border: 0.5px solid rgba(0, 0, 0, 0.2);
     border-radius: 6px;
-    background-color: rgba(242, 240, 240, 0.9);
-    -webkit-backdrop-filter: blur(40px);
-    backdrop-filter: blur(40px);
     font-size: 13px;
     line-height: 14px;
     color: #222222;
