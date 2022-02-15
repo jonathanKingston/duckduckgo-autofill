@@ -20,27 +20,25 @@ class AppleDeviceInterface extends InterfacePrototype {
         }
     }
 
-    async listenForSelectedCredential() {
+    async listenForSelectedCredential () {
         const response = await wkSendAndWait('getSelectedCredentials')
         switch (response.type) {
-            case 'none':
-                // Parent hasn't got a selected credential yet
-                return setTimeout(() => {
-                    this.listenForSelectedCredential()
-                }, 100)
-                break;
-            case 'ok':
-                this.inboundCredential({
-                    detail: {
-                        data: response.data,
-                        configType: response.configType
-                    }
-                })
-                break;
-            case 'stop':
-                // Parent wants us to stop polling
-                return
-                break;
+        case 'none':
+            // Parent hasn't got a selected credential yet
+            return setTimeout(() => {
+                this.listenForSelectedCredential()
+            }, 100)
+        case 'ok':
+            return this.inboundCredential({
+                detail: {
+                    data: response.data,
+                    configType: response.configType
+                }
+            })
+        case 'stop':
+            // Parent wants us to stop polling
+
+            break
         }
     }
 
