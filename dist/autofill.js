@@ -117,6 +117,7 @@ class AppleDeviceInterface extends InterfacePrototype {
 
     if (isTopFrame) {
       this.stripCredentials = false;
+      window.addEventListener('mouseMove', this);
     } else {
       // This is always added as a child frame needs to be informed of a parent frame scroll
       window.addEventListener('scroll', this);
@@ -149,10 +150,20 @@ class AppleDeviceInterface extends InterfacePrototype {
 
   handleEvent(event) {
     switch (event.type) {
+      case 'mouseMove':
+        this.processMouseMove(event);
+        break;
+
       case 'scroll':
         this.removeTooltip();
         break;
     }
+  }
+
+  processMouseMove(event) {
+    var _this$currentTooltip;
+
+    (_this$currentTooltip = this.currentTooltip) === null || _this$currentTooltip === void 0 ? void 0 : _this$currentTooltip.focus(event.detail.x, event.detail.y);
   }
 
   inboundCredential(e) {
@@ -4016,9 +4027,8 @@ class Tooltip {
 
     _defineProperty(this, "clickableButtons", new Map());
 
-    const mode = isTopFrame ? 'open' : 'closed';
     this.shadow = document.createElement('ddg-autofill').attachShadow({
-      mode
+      mode: 'closed'
     });
     this.host = this.shadow.host;
     this.config = config;
@@ -4061,6 +4071,16 @@ class Tooltip {
         this.checkPosition();
         break;
     }
+  }
+
+  focus(x, y) {
+    const focusableElements = 'button';
+    const currentFocusClassName = 'currentFocus';
+    const currentFocused = this.shadow.querySelectorAll(".".concat(currentFocusClassName));
+    [...currentFocused].map(el => {
+      el.classList.remove(currentFocusClassName);
+    });
+    this.shadow.elementFromPoint(x, y).closest(focusableElements).classList.add(currentFocusClassName);
   }
 
   checkPosition() {

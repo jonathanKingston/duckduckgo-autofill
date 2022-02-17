@@ -14,6 +14,7 @@ class AppleDeviceInterface extends InterfacePrototype {
         super()
         if (isTopFrame) {
             this.stripCredentials = false
+            window.addEventListener('mouseMove', this)
         } else {
             // This is always added as a child frame needs to be informed of a parent frame scroll
             window.addEventListener('scroll', this)
@@ -44,10 +45,17 @@ class AppleDeviceInterface extends InterfacePrototype {
 
     handleEvent (event) {
         switch (event.type) {
+        case 'mouseMove':
+            this.processMouseMove(event)
+            break;
         case 'scroll':
             this.removeTooltip()
             break
         }
+    }
+
+    processMouseMove(event) {
+        this.currentTooltip?.focus(event.detail.x, event.detail.y)
     }
 
     inboundCredential (e) {

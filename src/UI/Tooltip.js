@@ -3,8 +3,7 @@ const {getSubtypeFromType} = require('../Form/matching')
 
 class Tooltip {
     constructor (config, inputType, getPosition, deviceInterface) {
-        const mode = isTopFrame ? 'open' : 'closed'
-        this.shadow = document.createElement('ddg-autofill').attachShadow({mode})
+        this.shadow = document.createElement('ddg-autofill').attachShadow({mode: 'closed'})
         this.host = this.shadow.host
         this.config = config
         this.subtype = getSubtypeFromType(inputType)
@@ -41,6 +40,15 @@ class Tooltip {
             this.checkPosition()
             break
         }
+    }
+    focus(x, y) {
+        const focusableElements = 'button';
+        const currentFocusClassName = 'currentFocus';
+        const currentFocused = this.shadow.querySelectorAll(`.${currentFocusClassName}`);
+        [...currentFocused].map(el => {
+            el.classList.remove(currentFocusClassName)
+        })
+        this.shadow.elementFromPoint(x, y).closest(focusableElements).classList.add(currentFocusClassName);
     }
     checkPosition () {
         if (this.animationFrame) {
